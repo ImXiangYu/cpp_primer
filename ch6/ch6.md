@@ -160,3 +160,189 @@ argv[5] = 0;
 ```
 
 **当使用argv中的实参时，一定要记得可选的实参从argv[1]开始，argv[0]保存程序的名字，而非用户输入**
+
+# 6.2.6 含有可变形参的函数
+
+实参类型相同：initializer_list 标准库类型
+实参类型不同：编写可变参数模板
+特殊：省略符形参
+
+## initializer_list
+
+如果实参数量位置，但是实参类型全部相同，可以使用initializer_list类型的形参，可以用于表示某种特定类型的值的数组
+
+```cpp
+initializer_list<T> lst;
+```
+
+initializer_list也是一种模板类型，且其中的元素永远是常数值，无法改变其中元素的值
+
+如果想向 il 中传递一个值的序列，则必须把序列放在一对花括号内
+
+```cpp
+if (expected != actual) {
+	error_msg({"functionX", expected, actual});
+} else {
+	error_msg({"functionX", "okay"});
+}
+```
+
+## 省略符形参
+
+省略符形参是为了便于C++程序访问某些特殊的C代码设置的，这些代码使用了名为varargs的C标准库功能
+
+```
+void foo(parm_list, ...);
+void foo(...);
+```
+
+# 6.3 return
+
+## 不要返回局部对象的引用或指针
+
+返回局部对象的引用和指针是错误的，一旦函数完成，局部对象将被释放，指针将指向一个不存在的对象
+
+## 引用返回左值
+
+函数的返回类型决定函数调用是否是左值，调用一个返回引用的函数得到左值，其他返回类型得到右值
+
+```cpp
+char &get_val(string &str, string::size_type ix) {
+	return str[ix];
+}
+int main() {
+	string s("a value");
+	cout << s << endl;
+	get_val(s, 0) = 'A';
+	cout << s << endl;
+}
+```
+
+上述代码完全是对的，第一次输出会输出a value，第二次输出则是A value，因为函数可以返回左值，因此可以出现在赋值运算符的左侧
+
+## 列表初始化返回值
+
+C++11规定，函数可以返回花括号包围的值的列表
+
+```cpp
+return {"functionX", expected, autual};
+```
+
+## 递归
+
+**如果一个函数调用了它自身，不管这种调用是直接的还是间接的，都称该函数为递归函数**
+
+但main函数不能调用它自己
+
+## 尾置返回类型
+
+C++11可以使用尾置返回类型，任何函数的定义都能使用尾置返回，定义返回类型比较复杂的函数最有用，比如返回类型是数组的指针或引用
+
+```cpp
+auto func(int i) -> int(*)[10];
+```
+
+# 6.5.2 内联函数与constexpr函数
+
+## 内联函数
+
+调用函数虽然方便，但是存在潜在的性能开销，会比直接使用对应的表达式慢，因此可以使用内联函数
+
+将函数指定为内联函数，通常就是将它在每个调用点上“内联地”展开
+
+```cpp
+cout << shorterString(s1, s2) << endl;
+```
+
+在编译过程中会展开成类似于下面的格式
+
+```cpp
+cout << (s1.size() < s2.size() ? s1 : s2) << endl;
+```
+
+从而消除了函数的运行时开销
+
+只要通过在函数的返回类型前面加上关键字 inline 就可以将其声明成内联函数
+
+**但内联说明只是向编译器做出请求，编译器可以忽略这个请求，也就是内联不一定会生效**
+
+## constexpr
+
+constexpr函数是指能用于常量表达式的函数，不过要遵循几项约定：
+
+1. 函数的返回类型及所有形参的类型都得是字面值类型
+2. 函数体中必须有且只有一条return语句
+
+```cpp
+constexpr int new_sz() { return 42; }
+constexpr int foo = new_sz();
+```
+
+执行初始化任务时，编译器会把对constexpr函数的调用替换成其结果值，为了能在编译过程中随时展开，constexpr被隐式地指定为内联函数
+
+# 6.5.3 调试帮助
+
+## assert与NDEBUG
+
+assert的行为依赖于NDEBUG预处理变量的状态，如果定义了NDEBUG，则assert什么也不做，默认状态下没有定义NDEBUG，此时assert将执行运行时检查
+
+## \_\_xxx\_\_
+
+1. \_\_func\_\_，可以输出当前调试的函数的名字，编译器为每个函数都定义了\_\_func\_\_
+2. \_\_FILE\_\_，存放文件名的字符串字面值
+3. \_\_LINE\_\_，存放当前行号的整形字面值
+4. \_\_TIME\_\_，存放文件编译时间的字符串字面值
+5. \_\_DATE\_\_，存放文件编译日期的字符串字面值
+
+# 6.7 函数指针
+
+函数指针指向的是函数并非对象，函数指针指向某种特定类型，函数的类型由它的返回类型和形参类型共同决定，**与函数名无关**
+
+```cpp
+bool lengthCompare(const string &, const string &);
+// pf指向一个函数，该函数的参数是两个const string的引用，返回值是bool类型
+bool (pf*)(const string &, const string &);
+
+// 这也是一个函数指针
+using PF = int(*)(int*, int);
+```
+
+(*pf)两端的括号必不可少，如果不写这对括号，则pf是一个返回值为bool指针的函数
+
+当我们把函数名作为一个值使用时，该函数自动地转换成指针，例如：
+
+```cpp
+pf = lengthCompare; // pf指向名为lengthCompare的函数
+pf = &lengthCompare; // 等价的赋值语句：取地址符是可选的
+```
+
+此外，我们还能直接使用指向函数的指针调用该函数，无需提前解引用指针
+
+```cpp
+bool b1 = pf("hello", "goodbye"); // 调用lengthCompare函数
+bool b2 = (*pf)("hello", "goodbye"); // 一个等价的调用
+bool b3 = lengthCompare("hello", "goodbye"); // 另一个等价的调用
+```
+
+## 返回指向函数的指针
+
+（沟槽的C++
+
+意思是返回函数指针
+
+```cpp
+int (*f1(int))(int*, int);
+```
+
+由内向外，看到f1有形参列表，f1是个函数，f1前面有*，f1返回一个指针，指针的类型本身也包含形参列表，因此指针指向函数，该函数的返回类型是int
+
+为了身心健康，还是写成尾置返回类型吧！
+
+```cpp
+// 等价于
+auto f1(int) -> int (*)(int*, int);
+```
+
+f1是个函数，形参列表是int，返回值是一个函数指针
+好理解太多太多！
+
