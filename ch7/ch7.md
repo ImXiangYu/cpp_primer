@@ -197,3 +197,82 @@ item.combine(Sales_data("9-999")); // 正确，隐式转string，显式转Sales_
 
 # 7.5.5 聚合类
 
+聚合类（aggregate class）使得用户可以直接访问其成员，并且具有特殊的初始化语法形式，当一个类满足如下条件，我们说它是聚合的：
+
+1. 所有成员都是public的
+2. 没有定义任何构造函数
+3. 没有类内初始值
+4. 没有基类，也没有virtual函数
+
+聚合类的例子：
+
+```cpp
+struct Data{
+	int ival;
+	string s;
+};
+
+Data val1 = {0, "Anna"};
+```
+
+# 7.5.6 字面值常量类
+
+数据成员都是字面值类型的聚合类是字面值常量类，如果不是一个聚合类，符合以下条件也是一个字面值常量类：
+
+1. 数据成员都必须是字面值类型
+2. 类必须至少含有一个constexpr构造函数
+3. 如果一个数据成员含有类内初始值，则内置类型成员的初始值必须是一条常量表达式。或成员属于某种类类型，则初始值必须使用自己的constexpr构造函数
+4. 类必须使用析构函数的默认定义，该成员负责销毁类的对象
+
+## constexpr构造函数
+
+尽管构造函数不能是const的，但是字面值常量类的构造函数可以是constexpr的
+
+# 7.6 类的静态成员
+
+我们通过在成员的声明之前加上static，使其与类关联在一起，和其他成员一样，静态成员可以是public或private的
+
+静态数据成员的类型可以是常量、引用、指针、类类型等
+
+```cpp
+class Account {
+public:
+    void calculate() { amount += amount * interestRate; }
+    static double rate() { return interestRate; }
+    static void rate(double);
+private:
+    std::string owner;
+    double amount;
+    static double interestRate;
+    static double initRate();
+};
+```
+
+类的静态成员存在于任何对象之外，对象中不包含任何和静态数据成员有关的数据，因此，这个interestRate会被所有Account对象共享
+
+## 使用类的静态成员
+
+使用作用域运算符直接访问：
+```cpp
+double r;
+r = Account::rate(); // 使用作用域运算符
+```
+
+使用类的对象、引用、指针来访问静态成员
+
+```cpp
+Account ac1;
+Account *ac2 = &ac1;
+// 调用静态成员函数rate的等价形式
+r = ac1.rate(); // 通过Account的对象或引用
+r = ac2->rate(); // 通过指向Account对象的指针
+```
+
+**和类的所有成员一样，当我们指向类外部的静态成员时，必须指明成员所属的类名。且static关键字只出现在类内部的声明语句中，在类的外部定义静态成员时，不能重复static关键字**
+
+## 静态成员的类内初始化
+
+因为静态数据成员不属于类的任何一个对象，所以它们并不是在创建类的对象时被定义的。这意味着它们不是由类的构造函数初始化的
+
+通常情况下，类的静态成员不应该在类的内部初始化，然而我们可以为静态成员提供const整数类型的类内初始值，不过要求静态成员必须是字面值常量类的constexpr，初始值必须是常量表达式
+
